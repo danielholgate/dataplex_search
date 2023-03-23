@@ -3,24 +3,24 @@
     class="search-input"
     rounded
     outlined
+    clearable
+    clear-value=""
     v-model="text"
     @keydown.enter.prevent="submit"
     @focus="focus = true"
     @blur="focus = false"
   >
     <template v-slot:prepend>
-      <q-icon name="search" type="submit"></q-icon>
+      <div v-if="searchInProgress">
+        <q-circular-progress indeterminate rounded size="1em" color="blue" ></q-circular-progress>
+      </div>
+      <div v-if="!(searchInProgress)">
+        <q-icon name="search" type="submit"></q-icon>
+      </div>
     </template>
 
-    <template v-slot:append>
-      <q-icon
-        name="cancel"
-        v-if="text && focus"
-        @click.stop.prevent="text = null"
-        class="cursor-pointer"
-      ></q-icon>
-    </template>
   </q-input>
+
 </template>
 
 <style scoped>
@@ -35,17 +35,21 @@
 
 <script>
 export default {
-  emits: ["executeSearch"],
+  name: "SearchHeader",
+  emits: ["executeSearch","searchInProgress"],
   methods: {
     submit() {
       this.$emit("executeSearch");
     },
     cleartext() {
       this.se;
-    },
-    openUrl(link) {
-      return "//" + link;
-    },
+    }
   },
+  props: {
+    searchInProgress: {
+      type: Boolean,
+      required: true
+    }
+},
 };
 </script>

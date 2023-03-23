@@ -43,8 +43,9 @@ async function audience() {
 // Cache externally fetched information for future invocations
 let aud;
 
-projectId = "dh-dwh-28039";
-location = "us-central1";
+// Project ID and location from external file for now
+projectId = process.env.PROJECT_ID
+location = process.env.LOCATION
 
 async function listLakes() {
   const [lakes] = await dataplex_client.listLakes({
@@ -56,7 +57,7 @@ async function listLakes() {
 
 //https://cloud.google.com/data-catalog/docs/how-to/search#node.js
 async function search(q) {
-  query = q; //"type=zone";
+  query = q;
 
   // Create request.
   const scope = {
@@ -75,33 +76,18 @@ async function search(q) {
   try {
     console.log("Calling search client with query: " + query);
 
-    const [result] = await datacatalog_client.searchCatalog(req);
+    const [results] = await datacatalog_client.searchCatalog(req);
+    console.log(things.length + " results");
 
-    //console.log(`Found ${result.length} zones in project ${projectId}.`);
-    console.log("Results:");
-
-    result.forEach((zone) => {
-      things.push(zone);
-      console.log(zone);
+    results.forEach((result) => {
+      things.push(result);
     });
-    console.log("Total number of results: " + things.length);
+
   } catch (exception) {
     console.log("Exception: " + exception);
   }
   return things;
 }
-
-app.get("/", async (req, res) => {
-  const assertion = req.header("X-Goog-IAP-JWT-Assertion");
-  let email = "None";
-  try {
-    const info = await validateAssertion(assertion);
-    email = info.email;
-  } catch (error) {
-    console.log(error);
-  }
-  res.status(200).send(`Hello ${email}`).end();
-});
 
 app.get("/getLakes", async (req, res) => {
   lakes = [];
@@ -138,10 +124,9 @@ app.get("/search", async (req, res) => {
   }
   res.status(200).send(searchResult).end();
 });
-/////
 
 // set port, listen for requests
 const PORT = process.env.PORT || 8081;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}.`);
+  console.log(`Server running on port ${PORT}.`);
 });

@@ -1,60 +1,43 @@
 <template>
   <div>
-    <SearchHeader v-model="searchInputValue" @executeSearch="doSearch" />
+    <SearchHeader v-model="searchInputValue" @executeSearch="doSearch" :searchInProgress="searchInProgress" />
   </div>
 
-  <q-table
-    :rows="searchresults"
-    :columns="columns"
-    row-key="relativeResourceName"
-    color="amber"
-  ></q-table>
+  <div>
+    <SearchResults v-show="thereAreResults" :results="searchResults" />
+  </div>
+
 </template>
 
 <script>
 import SearchHeader from "../components/SearchHeader.vue";
+import SearchResults from "../components/SearchResults.vue";
 import axios from "axios";
 import { api } from "src/boot/axios";
 
 export default {
   name: "SearchPage",
-  components: { SearchHeader },
+  components: { SearchHeader, SearchResults },
   watch: {
     searchInputValue: function (newValue, oldValue) {
       // If "pageData" ever changes, then we will console log its new value.
-      console.log(newValue, oldValue);
+      //console.log(newValue, oldValue);
     },
   },
 
   data() {
     return {
-      searchresults: [],
-      Lakes: [{ name: "a" }],
       searchInputValue: "",
-
-      columns: [
-        {
-          name: "Name",
-          required: true,
-          label: "Name",
-          align: "left",
-          field: (row) => row.displayName,
-          format: (val) => `${val}`,
-          sortable: true,
-        },
-        {
-          name: "searchResultSubtype",
-          required: true,
-          label: "SubType",
-          align: "left",
-          field: (row) => row.relativeResourceName,
-          format: (val) => `${val}`,
-          sortable: true,
-        },
-      ],
+      Lakes: [],
+      searchResults: [],
+      searchInProgress: false
     };
   },
-
+  computed: {
+  thereAreResults() {
+    return ( this.searchresults != null )
+  }
+},
   methods: {
     getLakes() {
       return new Promise((resolve, reject) => {
@@ -72,7 +55,7 @@ export default {
     },
     doSearch() {
       var self = this;
-      console.log("Beginning parent search for: " + this.searchInputValue);
+      this.searchInProgress = true
       return new Promise((resolve, reject) => {
         api
           .get("/search", {
@@ -80,17 +63,18 @@ export default {
           })
           .then((response) => {
             resolve(response.data);
-            console.log("Returning results: " + JSON.stringify(response.data));
-            console.log(
-              "Returned data is type: " +
-                Object.prototype.toString.call(response.data)
-            );
+            console.log("Results: " + JSON.stringify(response.data));
+            //console.log(
+            //  "Returned data is type: " +
+            //    Object.prototype.toString.call(response.data)
+            //);
 
             if (response.data != null && response.data != "") {
-              self.searchresults = response.data;
+              self.searchResults = response.data;
             } else {
-              self.searchresults = [];
+              self.searchResults = [];
             }
+            self.searchInProgress = false
           })
           .catch((error) => {
             reject(error.response);
