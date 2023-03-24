@@ -1,44 +1,56 @@
 <template>
   <div>
-    <SearchHeader v-model="searchInputValue" @executeSearch="doSearch" :searchInProgress="searchInProgress" />
+    <SearchHeader v-model="searchInputValue" @executeSearch="doSearch" :inputText="searchInputValue" :searchInProgress="searchInProgress" @resetSearch="resetSearch" />
   </div>
-
   <div>
-    <SearchResults v-show="thereAreResults" :results="searchResults" />
+
+    <div v-if="searchIsReset">
+      <SearchResults v-show="thereAreResults" :results="searchResults" />
+    </div>
+    <div v-else-if="thereAreResults">
+      <SearchResults :results="searchResults" />
+    </div>
+    <div v-else-if="!thereAreResults && ! searchIsReset">
+      <div class="text-h5 noresults">No results found</div>
+    </div>
+
   </div>
 
 </template>
 
+<style scope="local">
+.noresults {
+  padding-left: 3em;
+}
+</style>
+
 <script>
 import SearchHeader from "../components/SearchHeader.vue";
 import SearchResults from "../components/SearchResults.vue";
-import axios from "axios";
 import { api } from "src/boot/axios";
 
 export default {
   name: "SearchPage",
   components: { SearchHeader, SearchResults },
-  watch: {
-    searchInputValue: function (newValue, oldValue) {
-      // If "pageData" ever changes, then we will console log its new value.
-      //console.log(newValue, oldValue);
-    },
-  },
-
   data() {
     return {
       searchInputValue: "",
       Lakes: [],
       searchResults: [],
-      searchInProgress: false
+      searchInProgress: false,
+      searchIsReset: true
     };
   },
   computed: {
   thereAreResults() {
-    return ( this.searchresults != null )
+    return ( this.searchResults != null && this.searchResults.length > 0)
   }
 },
   methods: {
+    resetSearch() {
+      console.log("resetting search")
+      this.searchIsReset = true
+    },
     getLakes() {
       return new Promise((resolve, reject) => {
         api
@@ -56,24 +68,22 @@ export default {
     doSearch() {
       var self = this;
       this.searchInProgress = true
+      this.searchResults = []
       return new Promise((resolve, reject) => {
         api
           .get("/search", {
-            params: { query: self.searchInputValue },
+            params: {"query": self.searchInputValue != null ? self.searchInputValue : '' }
           })
           .then((response) => {
             resolve(response.data);
-            console.log("Results: " + JSON.stringify(response.data));
-            //console.log(
-            //  "Returned data is type: " +
-            //    Object.prototype.toString.call(response.data)
-            //);
+          //  console.log("Results: " + JSON.stringify(response.data));
 
             if (response.data != null && response.data != "") {
               self.searchResults = response.data;
             } else {
               self.searchResults = [];
             }
+            self.searchIsReset = false
             self.searchInProgress = false
           })
           .catch((error) => {
