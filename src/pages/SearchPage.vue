@@ -1,19 +1,21 @@
 <template>
+
   <div>
-    <SearchHeader v-model="searchInputValue" @executeSearch="doSearch" :inputText="searchInputValue" :searchInProgress="searchInProgress" @resetSearch="resetSearch" />
+    <SearchHeader
+      v-model="selectedSuggestion"
+      @executeSearch="doSearch"
+      :searchInProgress="searchInProgress"
+      @resetSearch="resetSearch"
+    />
   </div>
   <div>
 
-    <div v-if="searchIsReset">
-      <SearchResults v-show="thereAreResults" :results="searchResults" />
-    </div>
-    <div v-else-if="thereAreResults">
+    <div v-if="thereAreResults">
       <SearchResults :results="searchResults" />
     </div>
-    <div v-else-if="!thereAreResults && ! searchIsReset">
+    <div v-else-if="!thereAreResults && !searchIsReset">
       <div class="text-h5 noresults">No results found</div>
     </div>
-
   </div>
 
 </template>
@@ -24,6 +26,9 @@
 }
 </style>
 
+<script setup>
+import { reactive } from 'vue';
+</script>
 <script>
 import SearchHeader from "../components/SearchHeader.vue";
 import SearchResults from "../components/SearchResults.vue";
@@ -31,24 +36,35 @@ import { api } from "src/boot/axios";
 
 export default {
   name: "SearchPage",
-  components: { SearchHeader, SearchResults },
+  components: {
+    SearchHeader,
+    SearchResults,
+  },
+
   data() {
     return {
-      searchInputValue: "",
       Lakes: [],
+      Projects: [],
       searchResults: [],
       searchInProgress: false,
-      searchIsReset: true
+      suggestMode: false,
+      searchIsReset: true,
+      selectedSuggestion: [],
+      suggestions : []
     };
   },
+  watch: {
+  },
   computed: {
-  thereAreResults() {
-    return ( this.searchResults != null && this.searchResults.length > 0)
-  }
-},
+    thereAreResults() {
+      return this.searchResults != null && this.searchResults.length > 0;
+    },
+  },
+  async mounted() {
+    //this.listProjects()
+  },
   methods: {
     resetSearch() {
-      console.log("resetting search")
       this.searchIsReset = true
     },
     getLakes() {
@@ -65,26 +81,36 @@ export default {
           });
       });
     },
-    doSearch() {
+
+    doSearch(searchQuery) {
+      const q = (searchQuery.query == null) ? '' : searchQuery.query
       var self = this;
-      this.searchInProgress = true
-      this.searchResults = []
+      this.searchInProgress = true;
+      this.searchResults = [];
+      console.log("Sending query ",q," to sever")
+
       return new Promise((resolve, reject) => {
         api
           .get("/search", {
-            params: {"query": self.searchInputValue != null ? self.searchInputValue : '' }
+            params: {
+              query: q != null ? q : "",
+            },
           })
           .then((response) => {
+
             resolve(response.data);
-          //  console.log("Results: " + JSON.stringify(response.data));
+
+            console.log("Received search result in client: ",JSON.stringify(response.data))
+
+            self.searchIsReset = false;
+            self.searchInProgress = false;
 
             if (response.data != null && response.data != "") {
               self.searchResults = response.data;
             } else {
               self.searchResults = [];
             }
-            self.searchIsReset = false
-            self.searchInProgress = false
+
           })
           .catch((error) => {
             reject(error.response);

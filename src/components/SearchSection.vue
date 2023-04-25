@@ -1,6 +1,6 @@
 <template>
-    <SearchHeader v-model="searchInputValue" @submit="handleFormSubmit"/>
-    <!---
+  <SearchHeader v-model="searchInputValue" @submit="handleFormSubmit" />
+  <!---
     <div v-if="searchState.wasSearched" class="sui-layout-body">
       <div class="sui-layout-body__inner">
         <div class="sui-layout-sidebar">
@@ -33,11 +33,9 @@
       </div>
     </div>
   </div>
--->
-</template>
+--></template>
 
 <script>
-
 //import DataCatalogAPI from "./services/datacatalogAPI"
 //import config from "../searchConfig";
 //import SearchResults from "./SearchResults";
@@ -54,11 +52,12 @@
 const driver = new SearchDriver(config);
 
 export default {
-  mixins:[DataCatalogAPI],
+  mixins: [DataCatalogAPI],
   components: {
     //SearchResults,
     //SearchFacet,
-    SearchHeader
+    SearchHeader,
+    SearchSuggestions,
     //SearchPagingInfo,
     //SearchPagination,
     //SearchSort,
@@ -75,8 +74,8 @@ export default {
       card_class: [],
       cost: [],
       resultsPerPage: 20,
-      sortBy: "relevance"
+      sortBy: "relevance",
     };
-  }
-}
+  },
+};
 </script>
