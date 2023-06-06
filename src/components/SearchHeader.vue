@@ -1,5 +1,7 @@
 <template>
 
+ <q-checkbox v-model="getMetadataInResults" label="Metadata"></q-checkbox>
+
   <q-select
     ref="searchinputbar"
     class="search-input"
@@ -8,10 +10,14 @@
     outlined
     clearable
     @keydown.enter.prevent="submit"
-    @input-value="filterFn"
+    hide-dropdown-icon
+    stack-label
+    lazy-rules
+    @filter="filterFn"
+    @input-value="logging"
     behavior="menu"
     v-model="selectedOptionModel"
-    :options=suggestions
+    :options="localSuggestions"
   >
     <template v-slot:prepend>
       <div v-if="searchInProgress">
@@ -27,34 +33,6 @@
       </div>
     </template>
   </q-select>
-
-<!---
-  <q-input
-    class="search-input"
-    rounded
-    outlined
-    clearable
-    clear-value="null"
-    v-model="text"
-    @keydown.enter.prevent="submit"
-    @focus="focus = true"
-    @blur="focus = false"
-  >
-    <template v-slot:prepend>
-      <div v-if="searchInProgress">
-        <q-circular-progress
-          indeterminate
-          rounded
-          size="1em"
-          color="blue"
-        ></q-circular-progress>
-      </div>
-      <div v-else>
-        <q-icon name="search" type="submit"></q-icon>
-      </div>
-    </template>
-  </q-input>
-  -->
 </template>
 
 <style>
@@ -66,16 +44,8 @@
   margin-bottom: 20px;
 }
 
-i.q-select__dropdown-icon {
-  display: none;
-}
 </style>
 
-<script setup>
-//import { toRefs } from "vue";
-//const props = defineProps("searchInProgress");
-//const { searchInProgress } = toRefs(props);
-</script>
 
 <script>
 
@@ -86,24 +56,55 @@ export default {
   name: "SearchHeader",
   emits: [
     "executeSearch",
-    "resetSearch"
+    "resetSearch",
+    "userEnteringSearchText",
+    "updateMetadataStatus"
   ],
   methods: {
     submit() {
-      // Hitting enter in suggest mode means just adding choice to end of current text
-   //   console.log("User hit enter")
       if ( this.InSuggestMode ) {
-    //    console.log("Suggest mode: this.userSearchInput " + this.userSearchInput)
+
       } else {
-        console.log("Searching for: " + this.userSearchInput)
-        this.$emit("executeSearch", { query : this.userSearchInput });
+        console.log("SearchHeader","Emitting a search for " + this.userSearchInput)
+        this.clearSuggestions()
+        this.InSuggestMode = false
+        this.finalisingSelection = false
+        this.$emit("executeSearch", { query : this.userSearchInput, getMetadata : this.getMetadataInResults });
       }
     },
-    filterFn (val,update) {
-  //    console.log("Search bar is now: " + JSON.stringify(val) + " Suggest Mode = " + this.InSuggestMode )
-      this.userSearchInput = val.replace(/\s\s+/g, ' ')
+
+    filterFn (val,update,abort) {
+
+      console.log("filterFn 1. this.userSearchInput = '" + this.userSearchInput + "' Suggest Mode = ", this.InSuggestMode,"Finalizing =",this.finalisingSelection )
+      update(() => {
+
+        if ( this.InSuggestMode ) {
+          console.log("filterFn 2. In this update thing in suggest mode")
+          const needle = this.getLastText(val).toLocaleLowerCase()
+          console.log("this.localSuggestions is currently: ", JSON.stringify(this.localSuggestions) )
+          this.localSuggestions = this.suggestions.filter(v => v.toLocaleLowerCase().indexOf(needle) > -1)
+          console.log("Local suggestions has now populated with " + this.localSuggestions.length, "options: ",this.localSuggestions)
+
+        } else {
+          console.log("filterFn 3. In this update thing in non-suggest mode..")
+
+          if ( val !== null && val.length > 0 ) {
+            console.log("..val not empty so updating this.userSearchInput to: " + val.replace(/\s\s+/g, ' ') + " (val is: " + val + ")" )
+            this.userSearchInput = val.replace(/\s\s+/g, ' ')
+        } else {
+          console.log("filterFn 4. ..val was empty so did nohing")
+        }
+        }
+
+        })
+    },
+    logging(a) {
+        console.log("logging(" + JSON.stringify(a) + ") called from @input-value. SelectedOptionModel = " + JSON.stringify(this.selectedOptionModel))
+        this.userSearchInput = a
+        this.$emit("userEnteringSearchText")
     },
     clearSuggestions() {
+      console.log("Clearing suggestions")
       this.InSuggestMode = false
       this.suggestions = []
     },
@@ -113,6 +114,7 @@ export default {
       this.InSuggestMode = true
     },
     listTypes() {
+      console.log("In listTypes()")
       this.InSuggestMode = false;
       this.suggestions= this.dataplex_types
       this.InSuggestMode = true
@@ -188,6 +190,12 @@ export default {
             reject(error.response);
           });
       });
+    },
+    getLastText(txt) {
+      return txt.split(" ").length > 1 ? txt.split(" ").slice(-1)[0] : txt
+    },
+    getEarlierText(txt) {
+      return txt.substring( 0, txt.lastIndexOf(' '))
     }
   },
 
@@ -196,69 +204,88 @@ export default {
       type: Boolean,
       default: false,
       required: true,
-    },
+    }
   },
 
+  computed: {},
   watch: {
     selectedOptionModel: {
       handler: function(newVal, oldVal) {
-          console.log("Drop down option has been selected: " + newVal)
-          console.log("Full search text is: " + this.previoususerSearchInput + " " + newVal )
-          this.previoususerSearchInput = ''
-          this.userSearchInput = this.previoususerSearchInput + newVal
+        console.log("selectedOptionModel watcher FIRED: "+ newVal)
+        if ( newVal == null ) return // do nothing more
+        if ( ! this.finalisingSelection ) {
+          console.log("selectedOptionModel watcher 1","this.finalisingSelection is FALSE")
+          this.finalisingSelection = true
+          this.clearSuggestions()
+          this.InSuggestMode = false
+          console.log("selectedOptionModel watcher 2 Drop down option '" + newVal + "' has been selected by user from the list")
+          this.userSearchInput = this.getEarlierText(this.previoususerSearchInput) + " " + newVal + " "
+          console.log("selectedOptionModel watcher 3 New search bar text is '" + this.userSearchInput + "'")
+          this.selectedOptionModel = null
+        } else {
+          console.log("selectedOptionModel watcher 1b","this.finalisingSelection is TRUE")
+          console.log("selectedOptionModel watcher 2b his.userSearchInput = ", this.userSearchInput, "this.SelectedOptionModel = ", this.SelectedOptionModel )
+
+        }
       }
     },
     suggestions: {
       handler: function(newVal, oldVal) {
      // if (newVal !== null && newVal.length > 0)
-      console.log("SearchHeader: Available suggested options have changed: " + newVal)
-    },
+      if ( newVal !== null ) {
+        this.localSuggestions = newVal
+        this.$refs.searchinputbar.showPopup()
+      }
+      },
     deep: true
     },
     InSuggestMode: function(newVal,oldVal) {
       if (newVal === true) {
         this.previoususerSearchInput = this.userSearchInput // preserve current text
-        console.log("Opening suggestions dropdown..")
         this.$refs.searchinputbar.showPopup()
       } else {
         this.$refs.searchinputbar.hidePopup()
       }
     },
+    getMetadataInResults: function( newVal ) {
+        this.$emit("updateMetadataStatus", {status : newVal});
+    },
     userSearchInput: function (newValue, oldValue) {
-      console.log("userSearchInput is now: " + newValue + " (was " + oldValue + ")")
-      console.log("Suggest mode is " + this.InSuggestMode)
+      console.log("userSearchInput watcher 1. It is now: " + newValue + " (was " + oldValue + ") Finalizing = ", this.finalisingSelection)
+     // console.log("Suggest mode is " + this.InSuggestMode)
       if (newValue !== null && newValue !== '') {
         const lastText = newValue.split(" ").length > 1 ? newValue.split(" ").slice(-1)[0] : newValue
-        console.log("Checking input with lastText = " + lastText)
-        if ( lastText.toLowerCase() == "tag:") {
+        //console.log("Checking input with lastText = " + lastText)
+
+        if ( this.finalisingSelection ) {
+          console.log('userSearchInput watcher 2. Settng this.selectedOptionModel = ' + newValue)
+          this.selectedOptionModel = newValue
+
+        } else {
+
+        if ( lastText.toLowerCase().startsWith("tag:"))  {
           this.listTags();
           return
         }
-        if (lastText.toLowerCase() == "lake:") {
+        if (lastText.toLowerCase().startsWith("lake:"))  {
           this.listLakes();
           return
         }
-        if (lastText.toLowerCase() == "system=") {
+        if (lastText.toLowerCase().startsWith("system="))  {
           this.listSystems();
           return
         }
-        if (lastText.toLowerCase() == "project:") {
+        if (lastText.toLowerCase().startsWith("project:"))  {
           this.listProjects();
           return
         }
-        if (lastText.toLowerCase() == "type=") {
+        if (lastText.toLowerCase().startsWith("type=") ) {
           this.listTypes();
           return
         }
-      //  if (lastText.length == 0) {
-      //    this.$emit("resetSearch");
-      //    return
-       // }
-        if (lastText.toLowerCase() == "project:") {
-          this.$emit("listProjects");
-          return
-        }
         this.clearSuggestions()
+            this.finalisingSelection = false
+        }
       }
       if (newValue == null || newValue.length == 0) this.clearSuggestions()
     },
@@ -266,7 +293,11 @@ export default {
   data() {
     return {
       suggestions: [],
+      localSuggestions: [],
+      getMetadataInResults: false,
+      getMetadata: false,
       InSuggestMode: false,
+      finalisingSelection: false,
       selectedOptionModel: ref(null),
       previoususerSearchInput: '',
       userSearchInput : '',

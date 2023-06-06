@@ -8,6 +8,7 @@
       :pagination="resultsPagination"
       selection="multiple"
       v-model:selected="selected"
+      flat
     >
 
       <template v-slot:top-right>
@@ -20,28 +21,31 @@
         ></q-btn>
       </template>
 
-<!---
-      <template v-slot:body-cell-tags="props">
-        <q-tr :props="props">
-            <q-td key="tagsDisplay" :props="props">
-            <v-list density="compact">
-                <v-list-item v-for="tag in props.row.tagsDisplay" :key="tag.name">
-                  <q-badge color="green" class="q-ma-sm">{{tag.name}}={{tag.value}}</q-badge>
-                </v-list-item>
+    <template #body-cell-tags="props">
+    <q-td :props="props">
+        <q-list dense>
+           <q-item clickable v-ripple v-for="tag in props.row.tagsDisplay" :key="tag.name">
+           <q-item-section>
+              <q-badge color="green" :style="{'font-size':'1.2em'}" class="q-ma-sm">{{tag.name}}={{tag.value}}</q-badge>
+            </q-item-section>
+            </q-item>
+        </q-list>
+    </q-td>
+  </template>
 
-            </v-list>
-            </q-td>
-          </q-tr>
-      </template>
-      -->
+     <template #body-cell-project="props">
+    <q-td :props="props">
+            <q-badge color="green" :style="{'font-size':'1.2em'}" class="q-ma-sm">{{props.value}}</q-badge>
+    </q-td>
+  </template>
 
-      <template v-slot:body-cell-icon="props">
+      <template #body-cell-icon="props">
         <q-td :props="props">
-             <div>
+             <div class="justify-center" text-align="center">
+             <div text-align="center">
                 <img :class="[props.value]">
-                <q-tooltip anchor="top middle">{{props.value}}</q-tooltip>
+              </div>
              </div>
-             <q-badge :label="props.value"></q-badge>
         </q-td>
       </template>
 
@@ -58,7 +62,7 @@
 }
 
 img {
-  width: 1.3em
+  width: 1.5em
 }
 
 img.entry_dataset {
@@ -110,13 +114,7 @@ export default {
   },
   methods: {
     iconURL(entityType) {
-      var path = entityType + ".png";
-
-      //if (entityType != null) {
-      // if (entityType == "entry.table") path = "../assets/results/colors_bigquery_color_1x_web_32dp.png"
-      //}
-
-      return path
+      return entityType + ".png"
     },
 
     wrapCsvValue(val, formatFn, row) {
@@ -233,20 +231,42 @@ export default {
           field: (row) => row.icon,
           format: (val) => `${val}`,
           style: {
-            fontSize: "1.8em",
-            width: "100px",
+            width: "50px",
+          },
+        },
+        {
+          name: "type",
+          label: "Type",
+          align: "left",
+          field: (row) => row.UITypeName,
+          format: (val) => `${val}`,
+          style: {
+            width: "50px",
           },
         },
         {
           name: "name",
           required: true,
           label: "Name",
-          align: "left",
+          align: "center",
           field: (row) => row.displayName,
           format: (val) => `${val}`,
           sortable: true,
           style: {
-            fontSize: "1.5em",
+             width: "200px",
+          },
+        },
+
+        {
+          name: "project",
+          required: true,
+          label: "Project",
+          align: "center",
+          field: (row) => row.projectID,
+          format: (val) => `${val}`,
+          sortable: true,
+          style: {
+             width: "40px",
           },
         },
 
@@ -254,25 +274,12 @@ export default {
           name: "tags",
           required: true,
           label: "Tags",
-          align: "left",
+          align: "middle",
           field: (row) => row.tagsDisplay,
           format: (val) => `${val}`,
           sortable: false,
           style: {
-            fontSize: "1.5em",
-          },
-        },
-
-        {
-          name: "metadata",
-          required: true,
-          label: "Metadata",
-          align: "left",
-          field: (row) => row.metadata[0].metadataDescription,
-          format: (val) => `${val}`,
-          sortable: true,
-          style: {
-            fontSize: "1.5em",
+            width: "200px",
           },
         },
 
@@ -285,7 +292,7 @@ export default {
           format: (val) => `${val}`,
           sortable: true,
           style: {
-            fontSize: "1.5em",
+   //         fontSize: "1.5em",
           },
         },
       ],
