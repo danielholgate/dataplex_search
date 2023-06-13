@@ -42,7 +42,7 @@ location = process.env.LOCATION;
 organization = process.env.ORGANIZATION_ID;
 
 // Project ID and location from external file for now
-const projects = []
+var projects = []
 
 if ( process.env.PROJECT_ID.split(",") !== null && process.env.PROJECT_ID.split(",").length > 0) {
   plist = process.env.PROJECT_ID.split(",")
@@ -74,7 +74,7 @@ async function listLakes() {
   return lakes;
 }
 
-async function listProjects() {
+async function listProjects(idOnly) {
 
   const client = new ProjectsClient();
 
@@ -84,7 +84,7 @@ async function listProjects() {
   projects.forEach((project) => {
       console.log(project)
       if (project.state == "ACTIVE") {
-        active_projects.push(project);
+        active_projects.push({'projectId' : project.projectId, 'displayName' : project.displayName});
         console.info(project);
       }
   })
@@ -167,13 +167,15 @@ async function addMetadata(results, callAPI) {
 
   for ( r in results ) {
 
-    results[r].metadata = {}
-    results[r].tagsDisplay = {}
+    results[r].metadata = []
+    results[r].tagsDisplay = []
+
+    if ( callAPI ) {
 
     lr = results[r].linkedResource
     var request = { linkedResource : lr };
 
-    if ( results[r].searchResultType !== 'TAG_TEMPLATE' && callAPI ) {
+    if ( results[r].searchResultType !== 'TAG_TEMPLATE') {
       // Add metadata and tags
       try {
       results[r].metadata = await datacatalog_client.lookupEntry(request);
@@ -201,6 +203,8 @@ async function addMetadata(results, callAPI) {
 
     }
 
+  }
+
     enriched.push(results[r])
 
   }
@@ -222,12 +226,20 @@ async function search(q, enrichForUI) {
   }
 
   console.log("Search scope ", JSON.stringify(req) )
-  var [results] = await datacatalog_client.searchCatalog(req);
+
+  //datacatalog_client.searchCatalogAsync
+
+ // var [results] = await datacatalog_client.searchCatalog(req);
+ var [results] = await datacatalog_client.searchCatalog(req);
+ //var [results] = await datacatalog_client.searchCatalogAsync(req);
+
   await [results];
 
       if ( enrichForUI ) {
 
         results.forEach( ( result ) => {
+
+          result.projectID = result.relativeResourceName.split("/")[1] //projects/danielholgate-477-202304170918
 
           result.icon = result.searchResultSubtype.replace(/\./g,"_")
           result.UITypeName = buildUITypeName(
@@ -237,9 +249,7 @@ async function search(q, enrichForUI) {
           if (result.displayName === null || result.displayName.length == 0)
             result.displayName = getUIResourceName(result.linkedResource);
           })
-    } //else {
-      //searchResults = results
-    //}
+    }
 
   return results;
 }
@@ -321,26 +331,40 @@ app.get("/listTags", async (req, res) => {
 
 app.get("/search", async (req, res) => {
   q = req.query.query;
+
+  getMetadata = (req.query.metadata == "true")
+
   searchResults = []
-  enrichedResults = [];
+  enrichedResults = []
+  results = []
+
   try {
-    console.log("Searching with query: '" + q + "'");
+
+    console.log("Searching with query: '" + q + "' ",getMetadata);
     startTime1 = Date.now();
     searchResults = await search(q,true);
     endTime1 = Date.now();
 
+    if ( ! getMetadata ) {
+      console.log("Adding Metadata fields ")
+    } else {
+      console.log("Adding Metadata from API")
+    }
     startTime2 = Date.now();
-    enrichedResults = await addMetadata(searchResults,true)
+    enrichedResults = await addMetadata(searchResults,getMetadata)
     endTime2 = Date.now();
 
-   if ( enrichedResults !== null ) {
-  //  console.log("EnrichedResults:", JSON.stringify(enrichedResults))
     console.log(
       searchResults.length +
         " search results for '" + q + "' in " +
         (endTime1 - startTime1) +
         " ms"
     );
+
+   if ( getMetadata ) {
+
+    if ( enrichedResults !== null ) {
+
     console.log(
       enrichedResults.length +
         " metadata results in " +
@@ -350,14 +374,23 @@ app.get("/search", async (req, res) => {
     console.log(
       "Total time " + (endTime2 - startTime1) + " ms"
     );
+    results = enrichedResults
+
    } else {
     console.log("SearchResult was empty object")
    }
+
+  } else {
+    results = searchResults
+  }
+
   } catch (error) {
     console.log(error);
   }
 
-  res.status(200).send(enrichedResults).end();
+  console.log("Returning:\n", JSON.stringify(results))
+
+  res.status(200).send(results).end();
 });
 
 // set port, listen for requests
