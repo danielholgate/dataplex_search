@@ -14,9 +14,8 @@
         </a>
         <q-btn-dropdown stretch flat :label="projectID" style="min-width:200px">
         <q-list>
-         <!--- <q-item-label header>My Projects</q-item-label> -->
           <q-item v-for="(item, index) in theProjects" :key="index" v-close-popup tabindex="0" clickable v-ripple>
-            <q-item-section avatar @click="messagex(item.projectId)">
+            <q-item-section avatar @click="setProject(item.projectId)">
               <q-avatar icon="folder" color="secondary" text-color="white"></q-avatar>
                <q-item-label>{{item.displayName}}</q-item-label>
                <q-item-label>{{item.projectId}}</q-item-label>
@@ -49,18 +48,15 @@ export default defineComponent({
 
   name: 'MainLayout',
 
-  components: {
-   //ProjectContext
-  },
-  mixins: [
-   //ProjectContext
-  ],
+  components: { },
+  mixins: [ ],
 
   methods: {
 
-    messagex(p) {
+    setProject(p) {
       console.log("New project search context set: "  + p)
       this.projectID = p
+      projectstore.setProject(p)
     },
 
     retrieveProjects() {

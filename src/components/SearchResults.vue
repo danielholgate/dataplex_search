@@ -2,10 +2,10 @@
   <div v-show="resultsExist">
 
     <q-table
-      :data="results"
       :rows="results"
       :columns="columns"
-      :pagination="resultsPagination"
+      v-model:pagination="resultsPagination"
+      :loading="loading"
       selection="multiple"
       v-model:selected="selected"
       flat
@@ -133,6 +133,44 @@ export default {
 
       return `"${formatted}"`;
     },
+
+    /// sample code to fetch from server
+    /*
+function onRequest (props) {
+      const { page, rowsPerPage, sortBy, descending } = props.pagination
+      const filter = props.filter
+
+      loading.value = true
+
+      // emulate server
+      setTimeout(() => {
+        // update rowsCount with appropriate value
+        pagination.value.rowsNumber = getRowsNumberCount(filter)
+
+        // get all rows if "All" (0) is selected
+        const fetchCount = rowsPerPage === 0 ? pagination.value.rowsNumber : rowsPerPage
+
+        // calculate starting row of data
+        const startRow = (page - 1) * rowsPerPage
+
+        // fetch data from "server"
+        const returnedData = fetchFromServer(startRow, fetchCount, filter, sortBy, descending)
+
+        // clear out existing data and add new
+        rows.value.splice(0, rows.value.length, ...returnedData)
+
+        // don't forget to update local pagination object
+        pagination.value.page = page
+        pagination.value.rowsPerPage = rowsPerPage
+        pagination.value.sortBy = sortBy
+        pagination.value.descending = descending
+
+        // ...and turn of loading indicator
+        loading.value = false
+      }, 1500)
+    }
+*/
+    /// end of sample code
 
     exportResults() {
       const content = [
@@ -362,10 +400,12 @@ Columns to export
           },
         },
       ],
+
       resultsPagination: {
         descending: false,
         page: 1,
-        rowsPerPage: 100,
+        rowsPerPage: 30,
+        rowsNumber: 10
         // rowsNumber: xx if getting data from a server
       },
     };

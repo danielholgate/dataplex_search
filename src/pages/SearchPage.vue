@@ -35,6 +35,10 @@ import SearchHeader from "../components/SearchHeader.vue";
 import SearchResults from "../components/SearchResults.vue";
 import { api } from "src/boot/axios";
 
+import { createPinia } from 'pinia';
+import { useProjectStore } from 'stores/projects';
+const projectstore = useProjectStore()
+
 export default {
   name: "SearchPage",
   components: {
@@ -101,13 +105,16 @@ export default {
       var self = this;
       this.searchInProgress = true
       this.searchResults = [];
-      console.log("SearchPage","1b Sending query '", q ,"' to server")
+      console.log("SearchPage","Sending query '", q ,"' to server for project " + projectstore.getProject)
+
+      var proj = projectstore.getProject
 
       return new Promise((resolve, reject) => {
         api
           .get("/search", {
             params: {
               query: q != null ? q : "",
+              project: proj,
               metadata: getMetadata
             },
           })

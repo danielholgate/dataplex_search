@@ -214,10 +214,18 @@ async function addMetadata(results, callAPI) {
 
 
 //https://cloud.google.com/data-catalog/docs/how-to/search#node.js
-async function search(q, enrichForUI) {
+async function search(q, proj, enrichForUI) {
+
+  projectArray = []
+
+  if (proj.indexOf(",") > -1) {
+    projectArray = proj.split(",")
+  } else {
+    projectArray = [proj]
+  }
 
   const scope = {
-    includeProjectIds: getAllProjects()
+    includeProjectIds: projectArray
   };
 
   req = {
@@ -225,15 +233,14 @@ async function search(q, enrichForUI) {
     query: q
   }
 
-  console.log("Search scope ", JSON.stringify(req) )
+  console.log("Search scope: ", JSON.stringify(req) )
 
-  //datacatalog_client.searchCatalogAsync
+  //const iterable = await datacatalog_client.searchCatalogAsync(req);
+  //for await (const response of iterable) {
+  //    console.log(response);
+  //}
 
- // var [results] = await datacatalog_client.searchCatalog(req);
- var [results] = await datacatalog_client.searchCatalog(req);
- //var [results] = await datacatalog_client.searchCatalogAsync(req);
-
-  await [results];
+  var [results] = await datacatalog_client.searchCatalog(req);
 
       if ( enrichForUI ) {
 
@@ -254,8 +261,6 @@ async function search(q, enrichForUI) {
   return results;
 }
 
-/////////////////
-/////////////////
 app.get("/listLakes", async (req, res) => {
   lakes = [];
   try {
@@ -309,11 +314,9 @@ async function listTags() {
 
   for (var x = 0; x < tag_templates.length; x++) {
 
-    //  console.log("Tag template " + x + ": ",JSON.stringify(tag_templates[x]))
       p = tag_templates[x].relativeResourceName
       console.log("\n3. Finding tags for template: " + p)
       template = datacatalog_client.getTagTemplate({ name:  tag_templates[x].relativeResourceName} )
-   //   console.log("Got template", JSON.stringify(template))
 
     }
     return tag_templates
@@ -331,6 +334,7 @@ app.get("/listTags", async (req, res) => {
 
 app.get("/search", async (req, res) => {
   q = req.query.query;
+  proj = req.query.project;
 
   getMetadata = (req.query.metadata == "true")
 
@@ -340,9 +344,9 @@ app.get("/search", async (req, res) => {
 
   try {
 
-    console.log("Searching with query: '" + q + "' ",getMetadata);
+    console.log("Searching with query: '" + q + "' project: ", proj, getMetadata);
     startTime1 = Date.now();
-    searchResults = await search(q,true);
+    searchResults = await search(q,proj,true);
     endTime1 = Date.now();
 
     if ( ! getMetadata ) {
